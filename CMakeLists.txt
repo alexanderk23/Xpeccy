@@ -290,6 +290,7 @@ if(${SDL1BUILD})
 		set(CPACK_RPM_PACKAGE_DEPENDS "${CPACK_RPM_PACKAGE_DEPENDS}, SDL >= 1.2")
 		set(SDL_VER ${SDL_VERSION_STRING})
 		set(SDL_NAME "SDL")
+		get_filename_component(SDL_FW_PATH "${SDL_INCLUDE_DIR}/.." ABSOLUTE)
 	endif(${SDL_FOUND})
 else(${SDL1BUILD})
 	find_package(SDL2 REQUIRED)
@@ -302,6 +303,7 @@ else(${SDL1BUILD})
 		set(SDL_VER "2.x")
 		set(SDL_NAME "SDL2")
 		message(STATUS "SDL2_INCLUDE_DIR = " ${SDL2_INCLUDE_DIR})
+		get_filename_component(SDL_FW_PATH "${SDL2_INCLUDE_DIR}/.." ABSOLUTE)
 	endif(${SDL2_FOUND})
 endif(${SDL1BUILD})
 
@@ -334,8 +336,9 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 		COMMAND ${MACDEPLOYQTEXE} ARGS ${BUNDLE_PATH} -always-overwrite
 		COMMAND mkdir ARGS -p ${BUNDLE_PATH}/Contents/Frameworks
-                COMMAND cp ARGS -R -X /Library/Frameworks/${SDL_NAME}.framework ${BUNDLE_PATH}/Contents/Frameworks
-                COMMAND install_name_tool -change @rpath/${SDL_NAME}.framework/Versions/A/${SDL_NAME} @executable_path/../Frameworks/${SDL_NAME}.framework/Versions/A/${SDL_NAME} ${BUNDLE_PATH}/Contents/MacOS/xpeccy
+		COMMAND cp ARGS -R ${SDL_FW_PATH} ${BUNDLE_PATH}/Contents/Frameworks
+		COMMAND install_name_tool -change @rpath/${SDL_NAME}.framework/Versions/A/${SDL_NAME} @executable_path/../Frameworks/${SDL_NAME}.framework/Versions/A/${SDL_NAME} ${BUNDLE_PATH}/Contents/MacOS/xpeccy
+		COMMAND codesign --force --deep --sign - ${BUNDLE_PATH}
 	)
 	set(CMAKE_INSTALL_PREFIX "/Applications")
 	install(TARGETS ${PROJECT_NAME} BUNDLE DESTINATION .)
