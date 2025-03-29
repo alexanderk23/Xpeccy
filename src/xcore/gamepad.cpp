@@ -362,7 +362,7 @@ QString xGamepad::name(int devid) {
 #if HAVESDL2
 			nm = QString(SDL_JoystickNameForIndex(devid));
 #else
-			nm = QString(SDL_JoystickName(sjptr));
+			nm = QString(SDL_JoystickName(devid));
 #endif
 			break;
 	}
@@ -385,7 +385,11 @@ QStringList xGamepad::getList() {
 		case GPBACKEND_SDL:
 			cnt = SDL_NumJoysticks();
 			for(id = 0; id < cnt; id++) {
+#if HAVESDL2
 				lst << SDL_JoystickNameForIndex(id);
+#else
+				lst << SDL_JoystickName(id);
+#endif
 			}
 			break;
 	}
