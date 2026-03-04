@@ -483,8 +483,8 @@ void xGamepad::update() {
 			if (lasthat & SDL_HAT_RIGHT) emit buttonChanged(VIRTKEYBASE + 3 + h * 4, !!(state & SDL_HAT_RIGHT));
 			lasthat = state;
 		}
-	}
 #endif
+	}
 }
 
 QString xGamepad::name(int devid) {
