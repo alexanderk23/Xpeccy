@@ -283,7 +283,7 @@ void xGamepad::open(int devid) {
 #if HAVESDL2
 		id = SDL_JoystickInstanceID(sjptr);
 #else
-		id = sjptr;
+		id = devid;
 #endif
 	}
 }
