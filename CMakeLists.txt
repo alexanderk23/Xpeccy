@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.5...4.1)
 
 #compiler settings
 
@@ -105,7 +105,6 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv8.3-a")
 		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=armv8.3-a")
 	endif()
-	message(STATUS "Target macOS version : ${CMAKE_OSX_DEPLOYMENT_TARGET} ${CMAKE_OSX_ARCHITECTURES}")
 
 	set(INC_PATHS local/include include)
 	set(LIB_PATHS lib lib64 local/lib local/lib64)
@@ -301,7 +300,6 @@ endif()
 
 if(${SDL1BUILD})
 	find_package(SDL REQUIRED)
-	find_package(SDL2 REQUIRED)
 	if(${SDL_FOUND})
 		add_definitions(-DHAVESDL1)
 		include_directories(${SDL_INCLUDE_DIR})
@@ -310,13 +308,9 @@ if(${SDL1BUILD})
 		set(CPACK_RPM_PACKAGE_DEPENDS "${CPACK_RPM_PACKAGE_DEPENDS}, SDL >= 1.2")
 		set(SDL_VER ${SDL_VERSION_STRING})
 		set(SDL_NAME "SDL")
+		message(STATUS "SDL_INCLUDE_DIR = " ${SDL_INCLUDE_DIR})
 		get_filename_component(SDL_FW_PATH "${SDL_INCLUDE_DIR}/.." ABSOLUTE)
 	endif(${SDL_FOUND})
-	find_package(SDL2 REQUIRED)
-	if (${SDL2_FOUND})
-		message(STATUS "SDL2_INCLUDE_DIR = " ${SDL2_INCLUDE_DIR})
-		get_filename_component(SDL2_FW_PATH "${SDL2_INCLUDE_DIR}/.." ABSOLUTE)
-	endif(${SDL2_FOUND})
 else(${SDL1BUILD})
 	find_package(SDL2 REQUIRED)
 	if (${SDL2_FOUND})
@@ -363,20 +357,28 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 		INSTALL_RPATH "@executable_path/../Frameworks"
 		BUILD_WITH_INSTALL_RPATH TRUE)
 
-	if(${SDL1BUILD})
-	add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-		COMMAND cp ARGS -R ${SDL2_FW_PATH} ${BUNDLE_PATH}/Contents/Frameworks/)
-	endif()
-
 	find_program(MACDEPLOYQTEXE macdeployqt)
 	add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-		COMMAND ${MACDEPLOYQTEXE} ARGS ${BUNDLE_PATH} -always-overwrite
-		COMMAND mkdir ARGS -p ${BUNDLE_PATH}/Contents/Frameworks
-		COMMAND cp ARGS -R ${SDL_FW_PATH} ${BUNDLE_PATH}/Contents/Frameworks
-		COMMAND codesign --force --deep --sign - ${BUNDLE_PATH})
+		COMMAND ${CMAKE_COMMAND} -E make_directory "${BUNDLE_PATH}/Contents/Frameworks"
+		COMMAND ${MACDEPLOYQTEXE} ARGS ${BUNDLE_PATH} -always-overwrite)
 
 	set(CMAKE_INSTALL_PREFIX "/Applications")
 	install(TARGETS ${PROJECT_NAME} BUNDLE DESTINATION .)
+
+	set(MACOSX_DEV_CERT "-")
+	install(CODE "
+		include(BundleUtilities)
+		fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}.app\" \"\" \"\")
+		execute_process(
+			COMMAND xattr -cr \"\${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}.app\"
+			COMMAND codesign --force --deep --sign \"${MACOSX_DEV_CERT}\" --options runtime \"\${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}.app\"
+			RESULT_VARIABLE sign_result
+		)
+		if(NOT sign_result EQUAL 0)
+			message(FATAL_ERROR \"Code signing failed!\")
+		endif()
+	" COMPONENT Runtime)
+
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
 	add_executable(${PROJECT_NAME} WIN32 ${SOURCES} ${HEADERS} ${UIHEADERS} ${RESOURCES} ${MOCHEADERS} ${CMAKE_SOURCE_DIR}/xpeccy.rc)
 endif()
@@ -394,7 +396,7 @@ message(STATUS "\n")
 message(STATUS "Project will be compiled with following options:\n")
 message(STATUS "Build type : ${CMAKE_BUILD_TYPE}")
 message(STATUS "Xpeccy version : ${XVER}")
-message(STATUS "OS : ${CMAKE_SYSTEM_NAME}")
+message(STATUS "OS : ${CMAKE_SYSTEM_NAME} ${CMAKE_OSX_DEPLOYMENT_TARGET} ${CMAKE_OSX_ARCHITECTURES}")
 message(STATUS "Qt version : ${QT_VER}")
 message(STATUS "SDL version : ${SDL_VER}")
 
