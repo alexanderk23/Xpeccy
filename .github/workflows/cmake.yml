@@ -18,9 +18,9 @@ jobs:
           #- os: ubuntu-latest
           #  compiler: gcc
           #  type: Release
-          #- os: macos-13
-          #  compiler: default
-          #  type: Release
+          - os: macos-13
+            compiler: default
+            type: Release
           - os: macos-latest
             compiler: default
             type: Release

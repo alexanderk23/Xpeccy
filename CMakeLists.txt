@@ -89,6 +89,24 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "/BSD$/")
 
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
+	if(CMAKE_OSX_ARCHITECTURES STREQUAL "")
+		if(CMAKE_SYSTEM_PROCESSOR STREQUAL arm64)
+			set(CMAKE_OSX_ARCHITECTURES arm64)
+		else()
+			set(CMAKE_OSX_ARCHITECTURES x86_64)
+		endif()
+	endif()
+	if(CMAKE_OSX_ARCHITECTURES MATCHES x86_64)
+		set(CMAKE_OSX_DEPLOYMENT_TARGET "11.7")
+		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -msse2")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -msse2")
+	else()
+		set(CMAKE_OSX_DEPLOYMENT_TARGET "15.0")
+		set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -march=armv8.3-a")
+		set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=armv8.3-a")
+	endif()
+	message(STATUS "Target macOS version : ${CMAKE_OSX_DEPLOYMENT_TARGET} ${CMAKE_OSX_ARCHITECTURES}")
+
 	set(INC_PATHS local/include include)
 	set(LIB_PATHS lib lib64 local/lib local/lib64)
 
@@ -283,6 +301,7 @@ endif()
 
 if(${SDL1BUILD})
 	find_package(SDL REQUIRED)
+	find_package(SDL2 REQUIRED)
 	if(${SDL_FOUND})
 		add_definitions(-DHAVESDL1)
 		include_directories(${SDL_INCLUDE_DIR})
@@ -293,6 +312,11 @@ if(${SDL1BUILD})
 		set(SDL_NAME "SDL")
 		get_filename_component(SDL_FW_PATH "${SDL_INCLUDE_DIR}/.." ABSOLUTE)
 	endif(${SDL_FOUND})
+	find_package(SDL2 REQUIRED)
+	if (${SDL2_FOUND})
+		message(STATUS "SDL2_INCLUDE_DIR = " ${SDL2_INCLUDE_DIR})
+		get_filename_component(SDL2_FW_PATH "${SDL2_INCLUDE_DIR}/.." ABSOLUTE)
+	endif(${SDL2_FOUND})
 else(${SDL1BUILD})
 	find_package(SDL2 REQUIRED)
 	if (${SDL2_FOUND})
@@ -335,15 +359,22 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 	add_executable(${PROJECT_NAME} MACOSX_BUNDLE ${SOURCES} ${HEADERS} ${UIHEADERS} ${RESOURCES} ${MOCHEADERS} ${BUNDLE_ICON_PATH})
 	set_target_properties(${PROJECT_NAME} PROPERTIES
 		MACOSX_BUNDLE ON
-		MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/MacOSXBundleInfo.plist.in)
+		MACOSX_BUNDLE_INFO_PLIST ${CMAKE_SOURCE_DIR}/MacOSXBundleInfo.plist.in
+		INSTALL_RPATH "@executable_path/../Frameworks"
+		BUILD_WITH_INSTALL_RPATH TRUE)
+
+	if(${SDL1BUILD})
+	add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
+		COMMAND cp ARGS -R ${SDL2_FW_PATH} ${BUNDLE_PATH}/Contents/Frameworks/
+	endif()
+
 	find_program(MACDEPLOYQTEXE macdeployqt)
 	add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 		COMMAND ${MACDEPLOYQTEXE} ARGS ${BUNDLE_PATH} -always-overwrite
 		COMMAND mkdir ARGS -p ${BUNDLE_PATH}/Contents/Frameworks
 		COMMAND cp ARGS -R ${SDL_FW_PATH} ${BUNDLE_PATH}/Contents/Frameworks
-		COMMAND install_name_tool -change @rpath/${SDL_NAME}.framework/Versions/A/${SDL_NAME} @executable_path/../Frameworks/${SDL_NAME}.framework/Versions/A/${SDL_NAME} ${BUNDLE_PATH}/Contents/MacOS/xpeccy
-		COMMAND codesign --force --deep --sign - ${BUNDLE_PATH}
-	)
+		COMMAND codesign --force --deep --sign - ${BUNDLE_PATH})
+
 	set(CMAKE_INSTALL_PREFIX "/Applications")
 	install(TARGETS ${PROJECT_NAME} BUNDLE DESTINATION .)
 elseif(${CMAKE_SYSTEM_NAME} MATCHES "Windows")
