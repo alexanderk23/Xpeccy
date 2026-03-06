@@ -372,7 +372,7 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 		fixup_bundle(\"${APP}\" \"\" \"\")
 		execute_process(
 			COMMAND xattr -cr \"${APP}\"
-			COMMAND codesign --force --deep --sign - \"${APP}\" 2>/dev/null
+			COMMAND codesign --force --deep --sign - \"${APP}\"
 			RESULT_VARIABLE sign_result
 		)
 		if(NOT sign_result EQUAL 0)
