@@ -299,16 +299,18 @@ endif()
 # SDL
 
 if(${SDL1BUILD})
+	find_package(SDL2)
 	find_package(SDL REQUIRED)
 	if(${SDL_FOUND})
 		add_definitions(-DHAVESDL1)
 		include_directories(${SDL_INCLUDE_DIR})
-		set(LIBRARIES ${LIBRARIES} ${SDL_LIBRARY})
+		set(LIBRARIES ${LIBRARIES} ${SDL_LIBRARY} ${SDL2_LIBRARY})
 		set(CPACK_DEBIAN_PACKAGE_DEPENDS "${CPACK_DEBIAN_PACKAGE_DEPENDS}, libSDL1.2debian (>=1.2)")
 		set(CPACK_RPM_PACKAGE_DEPENDS "${CPACK_RPM_PACKAGE_DEPENDS}, SDL >= 1.2")
 		set(SDL_VER ${SDL_VERSION_STRING})
 		set(SDL_NAME "SDL")
 		message(STATUS "SDL_INCLUDE_DIR = " ${SDL_INCLUDE_DIR})
+		message(STATUS "SDL2_INCLUDE_DIR = " ${SDL2_INCLUDE_DIR})
 		get_filename_component(SDL_FW_PATH "${SDL_INCLUDE_DIR}/.." ABSOLUTE)
 	endif(${SDL_FOUND})
 else(${SDL1BUILD})
@@ -359,19 +361,18 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 	find_program(MACDEPLOYQTEXE macdeployqt)
 	add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-		COMMAND ${CMAKE_COMMAND} -E make_directory "${BUNDLE_PATH}/Contents/Frameworks"
 		COMMAND ${MACDEPLOYQTEXE} ARGS ${BUNDLE_PATH} -always-overwrite)
 
 	set(CMAKE_INSTALL_PREFIX "/Applications")
 	install(TARGETS ${PROJECT_NAME} BUNDLE DESTINATION .)
 
-	set(MACOSX_DEV_CERT "-")
+	set(APP "${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}.app")
 	install(CODE "
 		include(BundleUtilities)
-		fixup_bundle(\"\${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}.app\" \"\" \"\")
+		fixup_bundle(\"${APP}\" \"\" \"\")
 		execute_process(
-			COMMAND xattr -cr \"\${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}.app\"
-			COMMAND codesign --force --deep --sign \"${MACOSX_DEV_CERT}\" --options runtime \"\${CMAKE_INSTALL_PREFIX}/${PROJECT_NAME}.app\"
+			COMMAND xattr -cr \"${APP}\"
+			COMMAND codesign --force --deep --sign - \"${APP}\" 2>/dev/null
 			RESULT_VARIABLE sign_result
 		)
 		if(NOT sign_result EQUAL 0)
@@ -386,7 +387,7 @@ endif()
 include_directories(${INCLUDIRS})
 target_link_libraries(${PROJECT_NAME} ${LIBRARIES})
 
-include(${CMAKE_ROOT}/Modules/CPack.cmake)
+include(CPack)
 
 # install
 
