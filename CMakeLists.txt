@@ -365,7 +365,7 @@ elseif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 	if(${SDL1BUILD})
 	add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-		COMMAND cp ARGS -R ${SDL2_FW_PATH} ${BUNDLE_PATH}/Contents/Frameworks/
+		COMMAND cp ARGS -R ${SDL2_FW_PATH} ${BUNDLE_PATH}/Contents/Frameworks/)
 	endif()
 
 	find_program(MACDEPLOYQTEXE macdeployqt)
